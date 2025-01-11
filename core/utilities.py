@@ -7,6 +7,30 @@ from glob import glob
 from datetime import datetime
 
 
+def get_datetime(info):
+    return datetime.strptime('-'.join(info['metadata']['date']), '%Y-%m-%d')
+
+
+def get_date_str(info, format_='%a %d. %b %Y', language=None):
+    if language is None:
+        language = info['metadata']['language']
+    ss = datetime.strftime(get_datetime(info), format_)
+    if language == 'en':
+        return ss
+    if language == 'dt':
+        return ss.replace(
+            'May', 'Mai').replace(
+            'Oct', 'Okt').replace(
+            'Dec', 'Dez').replace(
+            'Mon', 'Mo').replace(
+            'Tue', 'Di').replace(
+            'Wed', 'Mi').replace(
+            'Thu', 'Do').replace(
+            'Fri', 'Fr').replace(
+            'Sat', 'Sa').replace(
+            'Sun', 'So')
+    
+
 def delete_last_day_leap_year(da: xr.DataArray) -> xr.DataArray:
     return da.where(da["dayofyear"] != 366, drop=True)
 
@@ -30,7 +54,11 @@ def convert_to_doy(da, delete_leap_days=True):
 def add_license(ax: plt.Axes) -> None:
     """Add a license to the plot."""
 
-    arr = mpimg.imread(os.path.join('./', "by.png"))
+    arr = mpimg.imread(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), 
+        '..',
+        "by.png"
+    ))
     imagebox = OffsetImage(arr, zoom=0.15)
     ab = AnnotationBbox(
         imagebox,
@@ -51,77 +79,19 @@ def add_license(ax: plt.Axes) -> None:
     )
 
 
-def get_month_name(month: int, language='en') -> str:
-    if language == 'en':
-        return {
-            1: 'Jan',
-            2: 'Feb',
-            3: 'Mar',
-            4: 'Apr',
-            5: 'May',
-            6: 'Jun',
-            7: 'Jul',
-            8: 'Aug',
-            9: 'Sep',
-            10: 'Oct',
-            11: 'Nov',
-            12: 'Dec'
-        }[month]
-    if language == 'de':
-        return {
-            1: 'Jan',
-            2: 'Feb',
-            3: 'Mar',
-            4: 'Apr',
-            5: 'Mai',
-            6: 'Jun',
-            7: 'Jul',
-            8: 'Aug',
-            9: 'Sep',
-            10: 'Okt',
-            11: 'Nov',
-            12: 'Dez'
-        }[month]
-    raise NotImplementedError
-
 
 def get_location_coordinates(location):
-    return {
+    return {location: {
         'Hamburg': {'lat': 53, 'lon': 10},
-    }.get(location, {'abbrev': location})
+        'Vienna': {'lat': 48.2, 'lon': 16.3},
+        'Zurich': {'lat': 47.3, 'lon': 8.5},
+        'Edinburgh': {'lat': 56.0, 'lon': 360 - 3.2},
+        'Osaka': {'lat': 34.6, 'lon': 135.5},
+        'San Francisco': {'lat': 37.8, 'lon': 360 - 122.5},
+        'Casablanca': {'lat': 33.5, 'lon': 360 - 7.5},
+    }.get(location, {'abbrev': location})}
 
 
-def get_default_text(info):
-    return '\n'.join([
-    'Maximum temperature in {} until {}'.format(
-        list(info['metadata']['location'])[0],
-        # info['difference to mean'][-1].time.dt.strftime("%a %-d. %b %Y").item()),
-        datetime.strftime(datetime.strptime('-'.join(info['metadata']['date']), '%Y-%m-%d'), "%a %-d. %b %Y")),
-    'Maximum temperature anomaly in {} so far: {:.1f}°C'.format(
-        info['difference to mean']['time.year'][-1].item(),
-        info['difference to mean'].mean('time').item())
-])
-
-
-def get_image_alt(info):
-    date = datetime.strftime(
-        datetime.strptime('-'.join(info['metadata']['date']), '%Y-%m-%d'), "%a %-d. %b %Y")
-    return ' '.join([
-        'A figure showing the temperature evolution in {location} in {year}.',
-        'Gray in the background is the {startyear_base}-{endyear_base} distribution,',
-        'red in the foreground the temperature for {year}.',
-        'The most recent date shown is {date}, it has an anomaly',
-        'to the mean of the baseline of {anom:+.1f}°C or {anom_std:+.1f} standard deviations.'
-    ]).format(
-        location=list(info['metadata']['location'])[0],
-        year=info['metadata']['date'][0],
-        startyear_base=info['metadata']['startyear_base'],
-        endyear_base=info['metadata']['endyear_base'],
-        date=date,
-        anom=info['difference to mean'][-1].item(),
-        anom_std=info['standard deviations to mean'][-1].item(),
-    )
-    
 
 def get_image_filenames(
     location='Hamburg', 
@@ -167,9 +137,6 @@ def get_image_file(
     return (fn for fn in filenames if date in fn)
 
 
-import os
-from glob import glob
-
 
 def combine_to_gif(
     fn_last: str,
@@ -177,6 +144,7 @@ def combine_to_gif(
     max_duration=5,
     resize: int = 1000,
     overwrite=True,
+    loop=False,
 ):
     """Combine individual figures to gif.
 
@@ -192,6 +160,7 @@ def combine_to_gif(
         In 1/100 seconds. See convert -h delay
     max_duration: int, by default 5
         Maximum duration of the animation in seconds. Overwrites delay.
+        Delay is limited to [1, 50]
     resize : int, by default 640
         See convert -h resize
     """
@@ -201,7 +170,7 @@ def combine_to_gif(
 
     filenames = sorted(glob(os.path.join(path, f"*{ext}")))
     if max_duration is not None:
-        delay = min([max([1, int(max_duration* 100 / len(filenames))]), 50])
+        delay = min([max([5, int(max_duration* 100 / len(filenames))]), 50])
 
     fn += f"_d{delay}_s{resize}"
     fn = os.path.join(path_parent, fn + ".gif")
@@ -209,4 +178,9 @@ def combine_to_gif(
     filenames = " ".join(filenames)
 
     if overwrite or not os.path.isfile(fn):
-        os.system(f"module load clint freva; convert -delay {delay} -resize {resize} -loop 1 {filenames} {fn}")
+        if loop: 
+            os.system(f"module load clint freva; convert -delay {delay} -resize {resize} {filenames} {fn}")
+        else:
+            os.system(f"module load clint freva; convert -delay {delay} -resize {resize} -loop 1 {filenames} {fn}")
+
+    return fn

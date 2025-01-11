@@ -2,8 +2,8 @@
 # Calculate the mean seasonal cycle of a variable in a netCDF file
 
 window=31
-startyear=1961
-endyear=1990
+startyear=2017
+endyear=2023
 
 # Parse optional flags
 while [[ "$#" -gt 0 ]]; do
@@ -46,8 +46,8 @@ if [ ! -f ${outfile}_b${startyear}-${endyear}_w${window}_ydrunmean.nc ]; then
     cdo setattribute,window=${window},startyear=${startyear},endyear=${endyear} -ydrunmean,$window,rm=c ${outfile}_b${startyear}-${endyear}_365day.nc ${outfile}_b${startyear}-${endyear}_w${window}_ydrunmean.nc
 fi
 
-if [ ! -f ${outfile}_b${startyear}-${endyear}__w${window}_anomalies.nc ]; then
-    cdo sub ${outfile}_b${startyear}-${endyear}_365day.nc ${outfile}_b${startyear}-${endyear}_${window}_ydrunmean.nc ${outfile}_b${startyear}-${endyear}_w${window}_anomalies.nc
+if [ ! -f ${outfile}_b${startyear}-${endyear}_w${window}_anomalies.nc ]; then
+    cdo sub ${outfile}_b${startyear}-${endyear}_365day.nc ${outfile}_b${startyear}-${endyear}_w${window}_ydrunmean.nc ${outfile}_b${startyear}-${endyear}_w${window}_anomalies.nc
 fi
 
 if [ ! -f ${outfile}_b${startyear}-${endyear}_w${window}_ydrunmin.nc ]; then

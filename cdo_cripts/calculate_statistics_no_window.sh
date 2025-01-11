@@ -2,7 +2,7 @@
 # Calculate the mean seasonal cycle of a variable in a netCDF file
 
 startyear=1940
-endyear=2023
+endyear=2024
 window=1  # fixed to 1 day
 
 # Parse optional flags

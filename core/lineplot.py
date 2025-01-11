@@ -2,10 +2,11 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-from core.utilities import convert_to_doy, get_month_name
+from core.text import get_month_name
+from core.utilities import convert_to_doy
 
 
-def plot_timeseries_base(location, dpi_ratio=1, language='en'):
+def plot_timeseries_base(dpi_ratio=1, language='en'):
     fig, ax = plt.subplots(
             figsize=(12 / dpi_ratio, 6 / dpi_ratio), dpi=120*dpi_ratio
     )
@@ -15,11 +16,9 @@ def plot_timeseries_base(location, dpi_ratio=1, language='en'):
     if language == 'en':
         ax.set_ylabel("Temperature ($^\\circ$C)")
         ax.set_xticklabels(["1. Jan.", "1. Mar.", "1. May", "1. Jul.", "1. Sep", "1. Nov.", "31. Dec."])
-        ax.set_title(f'{location} daily maximum temperature')
     elif language == 'de':
         ax.set_ylabel("Temperatur ($^\\circ$C)")
         ax.set_xticklabels(["1. Jän.", "1. März", "1. Mai", "1. Jul.", "1. Sep", "1. Nov.", "31. Dez."])
-        ax.set_title(f'Tägliche Maximaltemperatur in {location}')
     else:
         NotImplementedError
         
@@ -127,10 +126,14 @@ def plot_stats_last(ax, da, da_mean, da_perc, da_std, color='darkred', language=
     va = 'center'
     if doy_last > 335:
         if anom < 0:
-            yy = da.sel(dayofyear=slice(330, None)).min() - 1
+            yy = np.min([
+                da.sel(dayofyear=doy_last) - 1,
+                da.sel(dayofyear=slice(330, None)).quantile(.1)])
             va = 'top' 
         else:
-            yy = da.sel(dayofyear=slice(330, None)).max() + 1
+            yy = np.max([
+                da.sel(dayofyear=doy_last) + 1,
+                da.sel(dayofyear=slice(330, None)).quantile(.9)])
             va = 'bottom'        
 
     ax.text(
